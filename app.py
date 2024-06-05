@@ -5,8 +5,8 @@ from flask import Flask, request, json
 app = Flask(__name__)
 
 
-@app.route('/bulk_training', methods=['GET'])
-def training_model():
+@app.route('/bulktraining', methods=['GET'])
+def training_model_bulk():
   data = {"success": False, "message": None}
   produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
   if produk != "":
