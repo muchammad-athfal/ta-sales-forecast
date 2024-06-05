@@ -1,11 +1,91 @@
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+from datetime import datetime, date
+import os
 import pandas as pd
+import traceback
+import joblib
+import time
+
+
+def get_connection():
+    try:
+        db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+        db_connection = create_engine(db_connection_str)
+        return db_connection
+    except:
+        print(traceback.format_exc())
+    return None
+
+
+def model_directory():
+    if not os.path.isdir('model'):
+        os.mkdir('model')
+    return "model"
+
+
+def get_barang_by_nama_produk(nama_barang = ""):
+    assert nama_barang != "", "Nama Barang tidak boleh kosong"
+    assert nama_barang is not None, "Nama Barang tidak boleh kosong"
+    db = get_connection()
+    statement = text("SELECT * FROM barang WHERE nama_barang LIKE :namabarang")
+    result = None
+    err = ""
+    with db.connect() as con:
+        rs = con.execute(statement, {"namabarang": nama_barang})
+        res = rs.fetchall()
+        if len(res) == 1:
+            result = res[0]
+        elif len() > 1:
+            err = "Barang ditemukan lebih dari satu"
+        else:
+            err = "Barang tidak ditemukan"
+        rs.close()
+        return result, err
+
+
+def to_timestamp(year: int, month: int):
+    return datetime(year, month, 1, 0, 0, 0).timestamp()
+
+
+def ambil_data_sekaligus():
+    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+    db_connection = create_engine(db_connection_str)
+    df = pd.read_sql('SELECT * FROM v_penjualan', con=db_connection)
+    df = df[['nama_barang', 'tgl_penjualan', 'jumlah_barang']]
+    df['tgl_penjualan'] = pd.to_datetime(df['tgl_penjualan'])
+    df['bulan'] = df['tgl_penjualan'].dt.month
+    df['tahun'] = df['tgl_penjualan'].dt.year
+
+    df = df[['nama_barang', 'bulan', 'tahun', 'jumlah_barang']]
+
+    return df
+
+
+def ambil_data_barang(nama_barang):
+    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+    db_connection = create_engine(db_connection_str)
+    df = pd.read_sql(f"""SELECT * FROM v_penjualan WHERE nama_barang LIKE '%%{nama_barang}%%'""", con=db_connection)
+    df = df[['nama_barang', 'tgl_penjualan', 'jumlah_barang']]
+    df['tgl_penjualan'] = pd.to_datetime(df['tgl_penjualan'])
+    df['bulan'] = df['tgl_penjualan'].dt.month
+    df['tahun'] = df['tgl_penjualan'].dt.year
+
+    df = df[['nama_barang', 'bulan', 'tahun', 'jumlah_barang']]
+
+    df['time'] = df['jumlah_barang']
+    for i in range(df.shape[0]):
+        df.iloc[i, -1] = to_timestamp(
+            df.iloc[i, 2], df.iloc[i, 1])
+
+    return df
+
 
 #Data acquisition
 def baca_data(produk, tahun):
-    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jual'
+    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
     db_connection = create_engine(db_connection_str)
     df = pd.read_sql('SELECT * FROM v_penjualan', con=db_connection)
     df = df[['nama_barang', 'tgl_penjualan', 'jumlah_barang']]
@@ -45,6 +125,94 @@ def model(x, y):
     intercept = model.intercept_
     coeff = model.coef_
     return intercept, coeff
+
+
+def latih_model(x, y, simpan=True, model_filepath = "model.sav", model = None):
+    if model is None:
+        model = LinearRegression()
+    model.fit(x, y)
+    if simpan:
+        # db = get_connection()
+        # if db:
+        #     with db.connect() as con:
+        #         con.execute("INSERT INTO model ")
+        joblib.dump(model, model_filepath)
+    return model
+
+
+def muat_model(model_filepath):
+    if os.path.isfile(model_filepath):
+        model = joblib.load(model_filepath)
+    return None
+
+
+def muat_model_by_nama_barang(nama_barang):
+    barang, err = get_barang_by_nama_produk(nama_barang)
+    if err == "":
+        model, err = muat_model(
+            f"{model_directory()}/{str(barang[0])}_{str(barang[1])}.model")
+        if model:
+            return model, err
+        else:
+            err = "Model Barang tidak ditemukan. Silahkan latih ulang model"
+    return None, err
+
+
+# def latih_model_satuan(nama_barang):
+#     error = ""
+#     if nama_barang and nama_barang != "":
+#         df = ambil_data_barang(nama_barang)
+#         produk, err = get_barang_by_nama_produk(nama_barang)
+#         if (err == ""):
+#             model, err = muat_model_by_nama_barang(produk)
+#             error = err
+#             train_test_split
+#             model = latih_model(
+#                 df[['time']], df[['jumlah_barang']], simpan=True,
+#                 model_filepath=f"{model_directory()}/{str(produk[0])}_{str(produk[1])}.model",
+#                 model=model)
+#     return error
+
+
+def latih_model_sekaligus():
+    df = ambil_data_sekaligus()
+    daftar_barang = df['nama_barang'].unique()
+    error = []
+    for barang in daftar_barang:
+        produk, err = get_barang_by_nama_produk(barang)
+        if (err == ""):
+            dfsub = df.loc[df['nama_barang'] == str(produk[2])]
+            dfsub['time'] = dfsub['jumlah_barang']
+            for i in range(dfsub.shape[0]):
+                dfsub.iloc[i, -1] = to_timestamp(
+                    dfsub.iloc[i, 2], dfsub.iloc[i, 1])
+            model, err = muat_model_by_nama_barang(produk)
+            if err != "":
+                error.append([barang, err])
+            model = latih_model(
+                dfsub[['time']], dfsub[['jumlah_barang']], simpan=True,
+                model_filepath=f"{model_directory()}/{str(produk[0])}_{str(produk[1])}.model",
+                model=model)
+            time.sleep(1)
+    return error
+
+
+def inferensi(model, x):
+    predict = (model.coeff_ * x) + model.intercept_
+    return predict
+
+
+def persamaan_model(model):
+    return f"{model.coeff_} * x + {model.intercept_}"
+
+
+def inferensi_tahunan(model, tahun, pembulatan=True):
+    hasil = []
+    for i in range(1, 13):
+        x = datetime(tahun, i, 1, 0, 0, 0).timestamp()
+        prediksi = inferensi(model, x)
+        hasil.append(round(prediksi))
+    return hasil
 
 # Evaluation
 def evaluasi(aktual, prediksi):
