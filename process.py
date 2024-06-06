@@ -10,6 +10,22 @@ import joblib
 import time
 
 
+class LinearRegressionMod():
+    coef_ = 0
+    intercept_ = 0
+
+    def __init__(self, coef, intercept) -> None:
+        self.coef_ = coef
+        self.intercept_ = intercept
+    
+    def predict(self, x):
+        return (self.coef_ * x) + self.intercept_
+    
+    def formula(self):
+        return f"{self.coef_} * x + {self.intercept_}"
+
+
+
 def get_connection():
     try:
         db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
@@ -127,6 +143,37 @@ def model(x, y):
     return intercept, coeff
 
 
+def inferensi(model, x):
+    predict = (model.coef_[0][0] * x) + model.intercept_[0]
+    return predict
+
+
+def persamaan_model(model):
+    return f"{model.coef_[0][0]} * x + {model.intercept_[0]}"
+
+
+# Evaluation
+def evaluasi(aktual, prediksi):
+    # Pastikan aktual dan prediksi memiliki panjang yang sama
+    assert len(aktual) == len(prediksi), "Panjang data aktual dan prediksi harus sama"
+
+    n = len(aktual)
+
+    # Evaluasi MSE
+    nilai_error = aktual - prediksi
+    nilai_error_pangkat_dua = nilai_error**2
+    nilai_mse = nilai_error_pangkat_dua.mean()
+    nilai_mse = round(nilai_mse, 2)
+
+    # Evaluasi MAPE
+    nilai_error_bagi_y = nilai_error / aktual
+    nilai_error_bagi_y_abs = abs(nilai_error_bagi_y)
+    nilai_mape = nilai_error_bagi_y_abs.mean() * 100
+    nilai_mape = round(nilai_mape, 2)
+
+    return nilai_mape, nilai_mse
+
+
 def latih_model(x, y, simpan=True, model_filepath = "model.sav", model = None):
     if model is None:
         model = LinearRegression()
@@ -141,14 +188,22 @@ def latih_model(x, y, simpan=True, model_filepath = "model.sav", model = None):
 
 
 def muat_model(model_filepath):
+    err, model = "", None
     if os.path.isfile(model_filepath):
-        model = joblib.load(model_filepath)
-    return None
+        loaded_model = joblib.load(model_filepath)
+        if isinstance(loaded_model, LinearRegression):
+            model = loaded_model
+        else:
+            err = "File Model bukan LinearRegression class"
+    else:
+        err = "File Model tidak ditemukan. Silahkan latih model."
+    return model, err
 
 
 def muat_model_by_nama_barang(nama_barang):
     barang, err = get_barang_by_nama_produk(nama_barang)
     if err == "":
+        print(f"{model_directory()}/{str(barang[0])}_{str(barang[1])}.model")
         model, err = muat_model(
             f"{model_directory()}/{str(barang[0])}_{str(barang[1])}.model")
         if model:
@@ -158,20 +213,23 @@ def muat_model_by_nama_barang(nama_barang):
     return None, err
 
 
-# def latih_model_satuan(nama_barang):
-#     error = ""
-#     if nama_barang and nama_barang != "":
-#         df = ambil_data_barang(nama_barang)
-#         produk, err = get_barang_by_nama_produk(nama_barang)
-#         if (err == ""):
-#             model, err = muat_model_by_nama_barang(produk)
-#             error = err
-#             train_test_split
-#             model = latih_model(
-#                 df[['time']], df[['jumlah_barang']], simpan=True,
-#                 model_filepath=f"{model_directory()}/{str(produk[0])}_{str(produk[1])}.model",
-#                 model=model)
-#     return error
+def latih_model_satuan(nama_barang, simpan=True):
+    error, mape, mse = "", 0, 0
+    if nama_barang and nama_barang != "":
+        df = ambil_data_barang(nama_barang)
+        produk, err = get_barang_by_nama_produk(nama_barang)
+        if (err == ""):
+            model, err = muat_model_by_nama_barang(produk)
+            error = err
+            X_train, X_test, y_train, y_test = train_test_split(
+                df[['time']], df[['jumlah_barang']], test_size=0.25, random_state=42)
+            model = latih_model(
+                X_train, y_train, simpan=simpan,
+                model_filepath=f"{model_directory()}/{str(produk[0])}_{str(produk[1])}.model",
+                model=model)
+            y_result = model.predict(X_test)
+            mape, mse = evaluasi(y_result, y_test)
+    return error, mape, mse
 
 
 def latih_model_sekaligus():
@@ -197,40 +255,13 @@ def latih_model_sekaligus():
     return error
 
 
-def inferensi(model, x):
-    predict = (model.coeff_ * x) + model.intercept_
-    return predict
-
-
-def persamaan_model(model):
-    return f"{model.coeff_} * x + {model.intercept_}"
-
-
 def inferensi_tahunan(model, tahun, pembulatan=True):
     hasil = []
     for i in range(1, 13):
         x = datetime(tahun, i, 1, 0, 0, 0).timestamp()
         prediksi = inferensi(model, x)
-        hasil.append(round(prediksi))
+        if pembulatan:
+            hasil.append(round(prediksi))
+        else:
+            hasil.append(prediksi)
     return hasil
-
-# Evaluation
-def evaluasi(aktual, prediksi):
-    # Pastikan aktual dan prediksi memiliki panjang yang sama
-    assert len(aktual) == len(prediksi), "Panjang data aktual dan prediksi harus sama"
-
-    n = len(aktual)
-
-    # Evaluasi MSE
-    nilai_error = aktual - prediksi
-    nilai_error_pangkat_dua = nilai_error**2
-    nilai_mse = nilai_error_pangkat_dua.mean()
-    nilai_mse = round(nilai_mse, 2)
-
-    # Evaluasi MAPE
-    nilai_error_bagi_y = nilai_error / aktual
-    nilai_error_bagi_y_abs = abs(nilai_error_bagi_y)
-    nilai_mape = nilai_error_bagi_y_abs.mean() * 100
-    nilai_mape = round(nilai_mape, 2)
-
-    return nilai_mape, nilai_mse
