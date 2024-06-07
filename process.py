@@ -244,14 +244,15 @@ def latih_model_sekaligus():
             for i in range(dfsub.shape[0]):
                 dfsub.iloc[i, -1] = to_timestamp(
                     dfsub.iloc[i, 2], dfsub.iloc[i, 1])
-            model, err = muat_model_by_nama_barang(produk)
-            if err != "":
-                error.append([barang, err])
-            model = latih_model(
-                dfsub[['time']], dfsub[['jumlah_barang']], simpan=True,
-                model_filepath=f"{model_directory()}/{str(produk[0])}_{str(produk[1])}.model",
-                model=model)
-            time.sleep(1)
+            try:
+                model, err = muat_model_by_nama_barang(produk)
+                model = latih_model(
+                    dfsub[['time']], dfsub[['jumlah_barang']], simpan=True,
+                    model_filepath=f"{model_directory()}/{str(produk[0])}_{str(produk[1])}.model",
+                    model=model)
+                time.sleep(1)
+            except:
+                error.append(f"Terdapat error pada pelatihan model barang {barang}")
     return error
 
 
