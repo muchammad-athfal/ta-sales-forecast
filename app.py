@@ -90,7 +90,7 @@ def predict():
 
   return response
 
-
+# REVISI
 @app.route('/persamaan', methods=['GET'])
 def persamaan_model():
   # mengambil data dari form nama produk
@@ -121,7 +121,7 @@ def prediksi_tahunan():
   model, err = muat_model_by_nama_barang(produk)
   if model:
      # menentukan kolom soal
-     prediksi = inferensi_tahunan()
+     prediksi = inferensi_tahunan(model, tahun)
   else:
      prediksi = None
 
