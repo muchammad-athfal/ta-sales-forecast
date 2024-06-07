@@ -10,12 +10,13 @@ app = Flask(__name__)
 # Apabila terdapat 100 barang, maka dihasilkan 100 model
 @app.route('/bulktraining', methods=['GET'])
 def training_model_bulk():
-  data = {"success": False, "message": None}
-  error = latih_model_sekaligus()
+  data = {"success": False, "data": [], "message": None}
+  model_evaluation, error = latih_model_sekaligus()
   if error != "":
      if len(error) > 0:
         data['message'] = error
      else:
+        data['data'] = model_evaluation
         data['success'] = True
   response = app.response_class(
      response=json.dumps(data),
