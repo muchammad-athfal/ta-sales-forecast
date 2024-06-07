@@ -177,7 +177,6 @@ def evaluasi(aktual, prediksi):
 
 
     nilai_mse = mean_squared_error(aktual, prediksi)
-    print(type(nilai_mse), nilai_mse)
 
     # Evaluasi MAPE
     # nilai_error_bagi_y = nilai_error / aktual
