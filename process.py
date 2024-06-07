@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 from sqlalchemy import create_engine, text
 from datetime import datetime, date
+import numpy as np
 import os
 import pandas as pd
 import traceback
@@ -67,7 +68,7 @@ def to_timestamp(year: int, month: int):
 
 
 def ambil_data_sekaligus():
-    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jual'
     db_connection = create_engine(db_connection_str)
     df = pd.read_sql('SELECT * FROM v_penjualan', con=db_connection)
     df = df[['nama_barang', 'tgl_penjualan', 'jumlah_barang']]
@@ -81,7 +82,7 @@ def ambil_data_sekaligus():
 
 
 def ambil_data_barang(nama_barang):
-    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jual'
     db_connection = create_engine(db_connection_str)
     df = pd.read_sql(f"""SELECT * FROM v_penjualan WHERE nama_barang LIKE '%%{nama_barang}%%'""", con=db_connection)
     df = df[['nama_barang', 'tgl_penjualan', 'jumlah_barang']]
@@ -101,7 +102,7 @@ def ambil_data_barang(nama_barang):
 
 #Data acquisition
 def baca_data(produk, tahun):
-    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jual'
     db_connection = create_engine(db_connection_str)
     df = pd.read_sql('SELECT * FROM v_penjualan', con=db_connection)
     df = df[['nama_barang', 'tgl_penjualan', 'jumlah_barang']]
@@ -153,6 +154,15 @@ def persamaan_model(model):
 
 
 # Evaluation
+def mean_squared_error(y_true, y_pred):
+    return np.square(np.subtract(y_true, y_pred)).mean()
+
+
+def mean_absolute_percentage_error(y_true, y_pred):
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+
+
 def evaluasi(aktual, prediksi):
     # Pastikan aktual dan prediksi memiliki panjang yang sama
     assert len(aktual) == len(prediksi), "Panjang data aktual dan prediksi harus sama"
@@ -160,16 +170,21 @@ def evaluasi(aktual, prediksi):
     n = len(aktual)
 
     # Evaluasi MSE
-    nilai_error = aktual - prediksi
-    nilai_error_pangkat_dua = nilai_error**2
-    nilai_mse = nilai_error_pangkat_dua.mean()
-    nilai_mse = round(nilai_mse, 2)
+    # nilai_error = aktual - prediksi
+    # nilai_error_pangkat_dua = nilai_error**2
+    # nilai_mse = nilai_error_pangkat_dua.mean()
+    # nilai_mse = round(nilai_mse, 2)
+
+
+    nilai_mse = mean_squared_error(aktual, prediksi)
+    print(type(nilai_mse), nilai_mse)
 
     # Evaluasi MAPE
-    nilai_error_bagi_y = nilai_error / aktual
-    nilai_error_bagi_y_abs = abs(nilai_error_bagi_y)
-    nilai_mape = nilai_error_bagi_y_abs.mean() * 100
-    nilai_mape = round(nilai_mape, 2)
+    # nilai_error_bagi_y = nilai_error / aktual
+    # nilai_error_bagi_y_abs = abs(nilai_error_bagi_y)
+    # nilai_mape = nilai_error_bagi_y_abs.mean() * 100
+    # nilai_mape = round(nilai_mape, 2)
+    nilai_mape = mean_absolute_percentage_error(aktual, prediksi)
 
     return nilai_mape, nilai_mse
 
@@ -214,28 +229,35 @@ def muat_model_by_nama_barang(nama_barang):
 
 
 def latih_model_satuan(nama_barang, simpan=True):
-    error, mape, mse = "", 0, 0
+    model, error, mape, mse = None, "", 0, 0
     if nama_barang and nama_barang != "":
         df = ambil_data_barang(nama_barang)
         produk, err = get_barang_by_nama_produk(nama_barang)
         if (err == ""):
-            model, err = muat_model_by_nama_barang(produk)
-            error = err
+            X = df[['time']].to_numpy()
+            Y = df['jumlah_barang'].to_numpy()
             X_train, X_test, y_train, y_test = train_test_split(
-                df[['time']], df[['jumlah_barang']], test_size=0.25, random_state=42)
+                X, Y, test_size=0.25, random_state=42)
+            model, err = muat_model_by_nama_barang(produk)
             model = latih_model(
                 X_train, y_train, simpan=simpan,
                 model_filepath=f"{model_directory()}/{str(produk[0])}_{str(produk[1])}.model",
                 model=model)
             y_result = model.predict(X_test)
-            mape, mse = evaluasi(y_result, y_test)
-    return error, mape, mse
+            try:
+                mape, mse = evaluasi(y_result, y_test)
+            except:
+                error = f"ada error saat mengevaluasi model. {traceback.format_exc()}"
+        else:
+            error = err
+    return model, error, mape, mse
 
 
 def latih_model_sekaligus():
     df = ambil_data_sekaligus()
     daftar_barang = df['nama_barang'].unique()
     error = []
+    model_evaluation = []
     for barang in daftar_barang:
         produk, err = get_barang_by_nama_produk(barang)
         if (err == ""):
@@ -244,16 +266,20 @@ def latih_model_sekaligus():
             for i in range(dfsub.shape[0]):
                 dfsub.iloc[i, -1] = to_timestamp(
                     dfsub.iloc[i, 2], dfsub.iloc[i, 1])
-            try:
-                model, err = muat_model_by_nama_barang(produk)
-                model = latih_model(
-                    dfsub[['time']], dfsub[['jumlah_barang']], simpan=True,
-                    model_filepath=f"{model_directory()}/{str(produk[0])}_{str(produk[1])}.model",
-                    model=model)
-                time.sleep(1)
-            except:
-                error.append(f"Terdapat error pada pelatihan model barang {barang}")
-    return error
+            # model, err = muat_model_by_nama_barang(produk)
+            model, errm, mape, mse = latih_model_satuan(barang)
+            if errm != "":
+                error.append(errm)
+            model_evaluation.append(f"Model {barang}, mape: {mape}, mse: {mse}")
+            # try:
+            #     # model = latih_model(
+            #     #     dfsub[['time']], dfsub[['jumlah_barang']], simpan=True,
+            #     #     model_filepath=f"{model_directory()}/{str(produk[0])}_{str(produk[1])}.model",
+            #     #     model=model)
+            #     time.sleep(1)
+            # except:
+            #     error.append(f"Terdapat error pada pelatihan model barang {barang}: {traceback.format_exc()}")
+    return model_evaluation, error
 
 
 def inferensi_tahunan(model, tahun, pembulatan=True):
