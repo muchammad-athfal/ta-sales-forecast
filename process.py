@@ -54,7 +54,7 @@ def get_barang_by_nama_produk(nama_barang = ""):
         res = rs.fetchall()
         if len(res) == 1:
             result = res[0]
-        elif len() > 1:
+        elif len(res) > 1:
             err = "Barang ditemukan lebih dari satu"
         else:
             err = "Barang tidak ditemukan"
