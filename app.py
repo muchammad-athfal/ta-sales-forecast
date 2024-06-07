@@ -8,9 +8,8 @@ app = Flask(__name__)
 @app.route('/bulktraining', methods=['GET'])
 def training_model_bulk():
   data = {"success": False, "message": None}
-  produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
-  if produk != "":
-     error = latih_model_sekaligus()
+  error = latih_model_sekaligus()
+  if error != "":
      if len(error) > 0:
         data['message'] = error
      else:
@@ -24,18 +23,18 @@ def training_model_bulk():
   # response = jsonify(data)
 
 
-# @app.route('/each_training', methods=['GET'])
-# def training_model_each():
-#   produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
-#   if produk != "":
-#      latih_model_satuan(produk)
-#   data = {"error": err}
-#   response = app.response_class(
-#      response=json.dumps(data),
-#      status=200,
-#      mimetype='application/json'
-#      )
-#   return response
+@app.route('/each_training', methods=['GET'])
+def training_model_each():
+  produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
+  if produk != "":
+     latih_model_satuan(produk)
+  data = {"error": err}
+  response = app.response_class(
+     response=json.dumps(data),
+     status=200,
+     mimetype='application/json'
+     )
+  return response
   # response = jsonify(data)
 
 
