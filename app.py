@@ -96,7 +96,7 @@ def predict():
 # REVISI
 # Fungsi Untuk menampilkan persamaan (rumus) model tiap barang
 @app.route('/persamaan', methods=['GET'])
-def persamaan_model():
+def persamaan_model_barang():
   # mengambil data dari form nama produk
   produk = str(request.form['nama_produk'])
   model, err = muat_model_by_nama_barang(produk)
