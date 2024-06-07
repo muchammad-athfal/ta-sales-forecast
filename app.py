@@ -3,37 +3,41 @@ from flask import Flask, request, json
 
 app = Flask(__name__)
 
+
+# REVISI
+# Fungsi Latih model sudah dipisah, dan melatih model tiap barang sekaligus.
+# Apabila terdapat 100 barang, maka dihasilkan 100 model
 @app.route('/bulktraining', methods=['GET'])
 def training_model_bulk():
-  data = {"success": False, "message": None}
-  error = latih_model_sekaligus()
-  if error != "":
-     if len(error) > 0:
-        data['message'] = error
-     else:
-        data['success'] = True
-  response = app.response_class(
-     response=json.dumps(data),
-     status=200,
-     mimetype='application/json'
-     )
-  return response
-  # response = jsonify(data)
+   data = {"success": False, "message": None}
+   error = latih_model_sekaligus()
+   if error != "":
+      if len(error) > 0:
+         data['message'] = error
+      else:
+         data['success'] = True
+   response = app.response_class(
+      response=json.dumps(data),
+      status=200,
+      mimetype='application/json'
+      )
+   return response
+   # response = jsonify(data)
 
 
-@app.route('/each_training', methods=['GET'])
-def training_model_each():
-  produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
-  if produk != "":
-     latih_model_satuan(produk)
-  data = {"error": err}
-  response = app.response_class(
-     response=json.dumps(data),
-     status=200,
-     mimetype='application/json'
-     )
-  return response
-  # response = jsonify(data)
+# @app.route('/each_training', methods=['GET'])
+# def training_model_each():
+#   produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
+#   if produk != "":
+#      error, mape, mse = latih_model_satuan(produk)
+#   data = {"error": error, "mape": mape, "mse": mse}
+#   response = app.response_class(
+#      response=json.dumps(data),
+#      status=200,
+#      mimetype='application/json'
+#      )
+#   return response
+#   # response = jsonify(data)
 
 
 
@@ -88,7 +92,8 @@ def predict():
 
    return response
 
-
+# REVISI
+# Fungsi Untuk menampilkan persamaan (rumus) model tiap barang
 @app.route('/persamaan', methods=['GET'])
 def persamaan_model():
    # mengambil data dari form nama produk
@@ -109,13 +114,17 @@ def persamaan_model():
    return response
 
 
+# REVISI
+# Fungsi Prediksi sudah dipisah, dan inputan dari web hanya tahun dan nama barang
+# Lalu dihasilkan nilai prediksi (total penjualan) untuk tiap bulanannya.
 @app.route('/predict', methods=['GET'])
 def prediksi_tahunan():
    # file_dataset = 'dataset/penjualan_produk.csv'
    # mengambil data dari form nama produk
    produk = str(request.form['nama_produk'])
    tahun = int(request.form['tahun'])  # mengambil data dari form tahun
-
+   
+   #   Ambil model berdasarkan nama barang
    model, err = muat_model_by_nama_barang(produk)
    if model:
       # menentukan kolom soal
