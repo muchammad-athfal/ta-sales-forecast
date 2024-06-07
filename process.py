@@ -28,7 +28,7 @@ class LinearRegressionMod():
 
 def get_connection():
     try:
-        db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+        db_connection_str = os.getenv('DATABASE_URL')
         db_connection = create_engine(db_connection_str)
         return db_connection
     except:
@@ -67,7 +67,7 @@ def to_timestamp(year: int, month: int):
 
 
 def ambil_data_sekaligus():
-    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+    db_connection_str = os.getenv('DATABASE_URL')
     db_connection = create_engine(db_connection_str)
     df = pd.read_sql('SELECT * FROM v_penjualan', con=db_connection)
     df = df[['nama_barang', 'tgl_penjualan', 'jumlah_barang']]
@@ -81,7 +81,7 @@ def ambil_data_sekaligus():
 
 
 def ambil_data_barang(nama_barang):
-    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+    db_connection_str = os.getenv('DATABASE_URL')
     db_connection = create_engine(db_connection_str)
     df = pd.read_sql(f"""SELECT * FROM v_penjualan WHERE nama_barang LIKE '%%{nama_barang}%%'""", con=db_connection)
     df = df[['nama_barang', 'tgl_penjualan', 'jumlah_barang']]
@@ -101,7 +101,7 @@ def ambil_data_barang(nama_barang):
 
 #Data acquisition
 def baca_data(produk, tahun):
-    db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+    db_connection_str = os.getenv('DATABASE_URL')
     db_connection = create_engine(db_connection_str)
     df = pd.read_sql('SELECT * FROM v_penjualan', con=db_connection)
     df = df[['nama_barang', 'tgl_penjualan', 'jumlah_barang']]
