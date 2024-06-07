@@ -28,7 +28,7 @@ class LinearRegressionMod():
 
 def get_connection():
     try:
-        db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jualan'
+        db_connection_str = 'mysql+pymysql://root:@127.0.0.1/jual'
         db_connection = create_engine(db_connection_str)
         return db_connection
     except:
