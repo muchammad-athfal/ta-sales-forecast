@@ -27,8 +27,8 @@ def training_model_bulk():
 def training_model_each():
   produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
   if produk != "":
-     latih_model_satuan(produk)
-  data = {"error": err}
+     error, mape, mse = latih_model_satuan(produk)
+  data = {"error": error}
   response = app.response_class(
      response=json.dumps(data),
      status=200,
