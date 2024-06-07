@@ -28,7 +28,7 @@ def training_model_each():
   produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
   if produk != "":
      error, mape, mse = latih_model_satuan(produk)
-  data = {"error": error}
+  data = {"error": error, "mape": mape, "mse": mse}
   response = app.response_class(
      response=json.dumps(data),
      status=200,
@@ -116,7 +116,8 @@ def prediksi_tahunan():
   # mengambil data dari form nama produk
   produk = str(request.form['nama_produk'])
   tahun = int(request.form['tahun'])  # mengambil data dari form tahun
-
+ 
+#   Ambil model berdasarkan nama barang
   model, err = muat_model_by_nama_barang(produk)
   if model:
      # menentukan kolom soal
