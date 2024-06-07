@@ -5,37 +5,35 @@ app = Flask(__name__)
 
 @app.route('/bulktraining', methods=['GET'])
 def training_model_bulk():
-   data = {"success": False, "message": None}
-   produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
-   if produk != "":
-      error = latih_model_sekaligus()
-      if len(error) > 0:
-         data['message'] = error
-      else:
-         data['success'] = True
-   response = app.response_class(
-      response=json.dumps(data),
-      status=200,
-      mimetype='application/json'
-   )
-   
-   return response
-   # response = jsonify(data)
+  data = {"success": False, "message": None}
+  error = latih_model_sekaligus()
+  if error != "":
+     if len(error) > 0:
+        data['message'] = error
+     else:
+        data['success'] = True
+  response = app.response_class(
+     response=json.dumps(data),
+     status=200,
+     mimetype='application/json'
+     )
+  return response
+  # response = jsonify(data)
 
 
-# @app.route('/each_training', methods=['GET'])
-# def training_model_each():
-#   produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
-#   if produk != "":
-#      latih_model_satuan(produk)
-#   data = {"error": err}
-#   response = app.response_class(
-#      response=json.dumps(data),
-#      status=200,
-#      mimetype='application/json'
-#      )
-#   return response
-# response = jsonify(data)
+@app.route('/each_training', methods=['GET'])
+def training_model_each():
+  produk = str(request.form['nama_produk']) #mengambil data dari form nama produk
+  if produk != "":
+     latih_model_satuan(produk)
+  data = {"error": err}
+  response = app.response_class(
+     response=json.dumps(data),
+     status=200,
+     mimetype='application/json'
+     )
+  return response
+  # response = jsonify(data)
 
 
 
@@ -121,7 +119,7 @@ def prediksi_tahunan():
    model, err = muat_model_by_nama_barang(produk)
    if model:
       # menentukan kolom soal
-      prediksi = inferensi_tahunan()
+      prediksi = inferensi_tahunan(model, tahun)
    else:
       prediksi = None
 
