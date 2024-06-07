@@ -1,2 +1,5 @@
 .DS_Store
-*.model
+.venv
+.env
+/model/*.model
+__pycache__
