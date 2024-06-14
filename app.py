@@ -95,7 +95,7 @@ def predict():
 
 # REVISI
 # Fungsi Untuk menampilkan persamaan (rumus) model tiap barang
-@app.route('/persamaan', methods=['GET'])
+@app.route('/persamaan', methods=['GET', 'POST'])
 def persamaan_model_barang():
    # mengambil data dari form nama produk
    produk = str(request.form['nama_produk'])
@@ -117,7 +117,7 @@ def persamaan_model_barang():
 # REVISI
 # Fungsi Prediksi sudah dipisah, dan inputan dari web hanya tahun dan nama barang
 # Lalu dihasilkan nilai prediksi (total penjualan) untuk tiap bulanannya.
-@app.route('/predict', methods=['GET'])
+@app.route('/predict', methods=['GET', 'POST'])
 def prediksi_tahunan():
    # file_dataset = 'dataset/penjualan_produk.csv'
    # mengambil data dari form nama produk
@@ -128,7 +128,7 @@ def prediksi_tahunan():
    model, err = muat_model_by_nama_barang(produk)
    if model:
       # menentukan kolom soal
-      prediksi = inferensi_tahunan(model, tahun)
+      prediksi = inferensi_tahunan(model, tahun, nama_barang=produk)
    else:
       prediksi = None
 
