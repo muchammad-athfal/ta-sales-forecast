@@ -63,8 +63,29 @@ def get_barang_by_nama_produk(nama_barang = ""):
         return result, err
 
 
-def to_timestamp(year: int, month: int):
-    return datetime(year, month, 1, 0, 0, 0).timestamp()
+def to_timestamp(year: int, month: int,
+                 minyear: int = 2000, minmonth: int = 1):
+    """convert year and month into integer
+
+    Args:
+        year (int): year to convert
+        month (int): month to convert
+        minyear (int): minimal year / lowest point
+        minmonth (int): minimal month / lowest point
+
+    Return:
+        (int): integer timestamp
+    """
+    # return datetime(year, month, 1, 0, 0, 0).timestamp()
+    # Revision
+    diffyear = year-minyear
+    assert diffyear >= 0, f"Tahun tidak boleh kurang dari {minyear}"
+    counter = diffyear * 12
+    diffmonth = (month-minmonth) + 1
+    if diffyear == 0:
+        assert diffmonth > 0, f"Bulan tidak boleh kurang dari {minmonth}"
+    counter = counter + diffmonth
+    return counter
 
 
 def ambil_data_sekaligus():
@@ -93,11 +114,25 @@ def ambil_data_barang(nama_barang):
     df = df[['nama_barang', 'bulan', 'tahun', 'jumlah_barang']]
 
     df['time'] = df['jumlah_barang']
+    minyear = df['tahun'].min()
+    dfsubmin = df.loc[df['tahun'] == minyear]
+    minmonth = dfsubmin['bulan'].min()
     for i in range(df.shape[0]):
         df.iloc[i, -1] = to_timestamp(
-            df.iloc[i, 2], df.iloc[i, 1])
+            df.iloc[i, 2], df.iloc[i, 1],
+            minyear=minyear, minmonth=minmonth)
 
     return df
+
+
+def get_minyear_minmonth_by_namabarang(nama_barang=""):
+    assert nama_barang != "", "nama_barang must be set"
+    minyear, minmonth = 2000, 1
+    df = ambil_data_barang(nama_barang)
+    minyear = df['tahun'].min()
+    dfsubmin = df.loc[df['tahun'] == minyear]
+    minmonth = dfsubmin['bulan'].min()
+    return minyear, minmonth
 
 
 #Data acquisition
@@ -145,12 +180,18 @@ def model(x, y):
 
 
 def inferensi(model, x):
-    predict = (model.coef_[0][0] * x) + model.intercept_[0]
+    if model.coef_.shape == (1,) and (type(model.intercept_) == np.float64):
+        predict = (model.coef_[0] * x) + model.intercept_.astype(int)
+    else:
+        predict = (model.coef_[0][0] * x) + model.intercept_[0]
     return predict
 
 
 def persamaan_model(model):
-    return f"{model.coef_[0][0]} * x + {model.intercept_[0]}"
+    if model.coef_.shape == (1,) and (type(model.intercept_) == np.float64):
+        return f"{model.coef_[0]} * x + {model.intercept_}"
+    else:
+        return f"{model.coef_[0][0]} * x + {model.intercept_[0]}"
 
 
 # Evaluation
@@ -262,9 +303,13 @@ def latih_model_sekaligus():
         if (err == ""):
             dfsub = df.loc[df['nama_barang'] == str(produk[2])]
             dfsub['time'] = dfsub['jumlah_barang']
+            minyear = df['tahun'].min()
+            dfsubmin = df.loc[df['tahun'] == minyear]
+            minmonth = dfsubmin['bulan'].min()
             for i in range(dfsub.shape[0]):
                 dfsub.iloc[i, -1] = to_timestamp(
-                    dfsub.iloc[i, 2], dfsub.iloc[i, 1])
+                    dfsub.iloc[i, 2], dfsub.iloc[i, 1],
+                    minyear=minyear, minmonth=minmonth)
             # model, err = muat_model_by_nama_barang(produk)
             model, errm, mape, mse = latih_model_satuan(barang)
             if errm != "":
@@ -281,10 +326,12 @@ def latih_model_sekaligus():
     return model_evaluation, error
 
 
-def inferensi_tahunan(model, tahun, pembulatan=True):
+def inferensi_tahunan(model, tahun, pembulatan=True, nama_barang=""):
     hasil = []
+    assert nama_barang != "", "nama_barang parameter must be set"
     for i in range(1, 13):
-        x = datetime(tahun, i, 1, 0, 0, 0).timestamp()
+        minyear, minmonth = get_minyear_minmonth_by_namabarang(nama_barang)
+        x = to_timestamp(tahun, i, minyear=minyear, minmonth=minmonth)
         prediksi = inferensi(model, x)
         if pembulatan:
             hasil.append(round(prediksi))
