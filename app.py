@@ -99,13 +99,16 @@ def predict():
 def persamaan_model_barang():
    # mengambil data dari form nama produk
    produk = str(request.form['nama_produk'])
-   model, err = muat_model_by_nama_barang(produk)
-   data = {"success": False, "persamaan": "", "error": ""}
-   if model:
-      data['persamaan'] = persamaan_model(model)
-      data['success'] = True
-   else:
-      data['error'] = err
+   data = {"success": False, "persamaan": "", "message": ""}
+   try:
+      model, err = muat_model_by_nama_barang(produk)
+      if model:
+         data['persamaan'] = persamaan_model(model)
+         data['success'] = True
+      else:
+         data['message'] = err
+   except Exception as e:
+      data['message'] = e.__str__()
    response = app.response_class(
       response=json.dumps(data),
       status=200,
@@ -123,19 +126,25 @@ def prediksi_tahunan():
    # mengambil data dari form nama produk
    produk = str(request.form['nama_produk'])
    tahun = int(request.form['tahun'])  # mengambil data dari form tahun
+   prediksi = None
    
    #   Ambil model berdasarkan nama barang
    model, err = muat_model_by_nama_barang(produk)
    if model:
       # menentukan kolom soal
-      prediksi = inferensi_tahunan(model, tahun, nama_barang=produk)
+      try:
+         prediksi = inferensi_tahunan(model, tahun, nama_barang=produk)
+      except Exception as e:
+         err = e.__str__()
    else:
       prediksi = None
+      err = str("model/rumus regresi linear untuk barang "
+                + f"{produk} tidak ditemukan")
 
    # info = [data_last[0], str(data_last[2]), str(data_last[3]), prediksi_data_baru, mape, mse]
 
    data = {'nama_produk': produk, 'tahun': int(tahun),
-      'bulan': [x for x in range(1, 13)], "error": err,
+      'bulan': [x for x in range(1, 13)], "message": err,
       'prediksi': prediksi}
 
    # tampung data dan diubah menjadi json
